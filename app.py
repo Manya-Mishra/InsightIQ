@@ -13,6 +13,15 @@ from analytics.cleaning import (
     clean_dataset,
 )
 
+from analytics.eda import (
+    detect_outliers_iqr,
+    calculate_correlation,
+    analyze_categorical_column,
+    get_distribution_summary,
+    get_relationship_data,
+    get_time_trend,
+)
+
 
 # --------------------------------------------------
 # 1. PAGE CONFIGURATION
@@ -536,14 +545,429 @@ if (
     )
 
 
+
 # --------------------------------------------------
-# 17. FOOTER
+# 17. ADVANCED EXPLORATORY DATA ANALYSIS
+# --------------------------------------------------
+
+st.divider()
+
+st.header("9. Advanced Exploratory Data Analysis")
+
+# Use cleaned data for analysis if cleaning has been
+# performed on the currently uploaded file.
+# Otherwise, use the original uploaded dataset.
+
+if (
+    st.session_state.get("cleaned_df") is not None
+    and st.session_state.get("cleaned_file_key") == file_key
+):
+    analysis_df = st.session_state["cleaned_df"]
+
+    st.info(
+        "Advanced EDA is using your cleaned dataset."
+    )
+
+else:
+    analysis_df = df
+
+    st.info(
+        "Advanced EDA is using your original dataset."
+    )
+
+
+# Identify columns from the selected analysis dataset.
+
+eda_numeric_columns = analysis_df.select_dtypes(
+    include="number"
+).columns.tolist()
+
+eda_categorical_columns = analysis_df.select_dtypes(
+    include=["object", "category", "bool", "string"]
+).columns.tolist()
+
+eda_datetime_columns = analysis_df.select_dtypes(
+    include=["datetime", "datetimetz"]
+).columns.tolist()
+
+
+# --------------------------------------------------
+# 17A. OUTLIER DETECTION
+# --------------------------------------------------
+
+st.subheader("A. Outlier Detection")
+
+if eda_numeric_columns:
+
+    outlier_report = detect_outliers_iqr(analysis_df)
+
+    if not outlier_report.empty:
+
+        st.write(
+            "Potential outliers detected using the IQR method."
+        )
+
+        st.dataframe(
+            outlier_report,
+            use_container_width=True
+        )
+
+        selected_outlier_column = st.selectbox(
+            "Select a column to visualize outliers",
+            eda_numeric_columns,
+            key="outlier_column"
+        )
+
+        fig = px.box(
+            analysis_df,
+            y=selected_outlier_column,
+            title=f"Outlier Analysis: {selected_outlier_column}",
+            points="outliers"
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+    else:
+        st.info("No numeric data available for outlier detection.")
+
+else:
+    st.info("No numeric columns found.")
+
+
+# --------------------------------------------------
+# 17B. CORRELATION ANALYSIS
+# --------------------------------------------------
+
+st.subheader("B. Correlation Analysis")
+
+correlation_matrix = calculate_correlation(analysis_df)
+
+if correlation_matrix is not None:
+
+    fig = px.imshow(
+        correlation_matrix,
+        text_auto=".2f",
+        aspect="auto",
+        color_continuous_scale="RdBu_r",
+        zmin=-1,
+        zmax=1,
+        title="Correlation Heatmap"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+    st.write("Correlation Matrix")
+
+    st.dataframe(
+        correlation_matrix,
+        use_container_width=True
+    )
+
+else:
+    st.info(
+        "At least two numeric columns are required "
+        "for correlation analysis."
+    )
+
+
+# --------------------------------------------------
+# 17C. DISTRIBUTION ANALYSIS
+# --------------------------------------------------
+
+st.subheader("C. Distribution Analysis")
+
+if eda_numeric_columns:
+
+    distribution_column = st.selectbox(
+        "Select a numeric column",
+        eda_numeric_columns,
+        key="distribution_column"
+    )
+
+    distribution_summary = get_distribution_summary(
+        analysis_df,
+        distribution_column
+    )
+
+    if distribution_summary is not None:
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric(
+                "Mean",
+                f"{distribution_summary['Mean']:,.2f}"
+            )
+
+            st.metric(
+                "Median",
+                f"{distribution_summary['Median']:,.2f}"
+            )
+
+        with col2:
+            st.metric(
+                "Minimum",
+                f"{distribution_summary['Minimum']:,.2f}"
+            )
+
+            st.metric(
+                "Maximum",
+                f"{distribution_summary['Maximum']:,.2f}"
+            )
+
+        with col3:
+            st.metric(
+                "Standard Deviation",
+                f"{distribution_summary['Standard Deviation']:,.2f}"
+            )
+
+            st.metric(
+                "Skewness",
+                f"{distribution_summary['Skewness']:,.2f}"
+            )
+
+        distribution_chart = st.selectbox(
+            "Choose distribution chart",
+            ["Histogram", "Box Plot"],
+            key="distribution_chart"
+        )
+
+        if distribution_chart == "Histogram":
+
+            fig = px.histogram(
+                analysis_df,
+                x=distribution_column,
+                title=f"Distribution of {distribution_column}",
+                marginal="box"
+            )
+
+        else:
+
+            fig = px.box(
+                analysis_df,
+                y=distribution_column,
+                title=f"Box Plot of {distribution_column}"
+            )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+    else:
+        st.info("No valid numeric values are available.")
+
+else:
+    st.info("No numeric columns found.")
+
+
+# --------------------------------------------------
+# 17D. CATEGORICAL ANALYSIS
+# --------------------------------------------------
+
+st.subheader("D. Categorical Analysis")
+
+if eda_categorical_columns:
+
+    selected_category = st.selectbox(
+        "Select a categorical column",
+        eda_categorical_columns,
+        key="eda_category"
+    )
+
+    category_report = analyze_categorical_column(
+        analysis_df,
+        selected_category
+    )
+
+    st.dataframe(
+        category_report.head(20),
+        use_container_width=True
+    )
+
+    fig = px.bar(
+        category_report.head(20),
+        x="Category",
+        y="Count",
+        title=f"Category Distribution: {selected_category}",
+        text="Count"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+else:
+    st.info("No categorical columns found.")
+
+
+# --------------------------------------------------
+# 17E. NUMERIC RELATIONSHIP ANALYSIS
+# --------------------------------------------------
+
+st.subheader("E. Relationship Analysis")
+
+if len(eda_numeric_columns) >= 2:
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        x_column = st.selectbox(
+            "Select X-axis column",
+            eda_numeric_columns,
+            key="relationship_x"
+        )
+
+    with col2:
+
+        y_column = st.selectbox(
+            "Select Y-axis column",
+            [
+                column for column in eda_numeric_columns
+                if column != x_column
+            ],
+            key="relationship_y"
+        )
+
+    relationship_df = get_relationship_data(
+        analysis_df,
+        x_column,
+        y_column
+    )
+
+    if not relationship_df.empty:
+
+        fig = px.scatter(
+            relationship_df,
+            x=x_column,
+            y=y_column,
+            title=f"{x_column} vs {y_column}",
+            trendline="ols"
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+        correlation_value = relationship_df[
+            [x_column, y_column]
+        ].corr().iloc[0, 1]
+
+        st.metric(
+            "Pearson Correlation",
+            f"{correlation_value:.3f}"
+            if pd.notna(correlation_value)
+            else "Not available"
+        )
+
+    else:
+        st.info("No valid data available for this relationship.")
+
+else:
+    st.info(
+        "At least two numeric columns are required "
+        "for relationship analysis."
+    )
+
+
+# --------------------------------------------------
+# 17F. TIME TREND ANALYSIS
+# --------------------------------------------------
+
+st.subheader("F. Time Trend Analysis")
+
+if eda_datetime_columns and eda_numeric_columns:
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        selected_date = st.selectbox(
+            "Select a date column",
+            eda_datetime_columns,
+            key="trend_date"
+        )
+
+    with col2:
+
+        selected_value = st.selectbox(
+            "Select a numeric metric",
+            eda_numeric_columns,
+            key="trend_value"
+        )
+
+    frequency_option = st.selectbox(
+        "Select time frequency",
+        ["Daily", "Weekly", "Monthly", "Quarterly"],
+        key="trend_frequency"
+    )
+
+    frequency_mapping = {
+        "Daily": "D",
+        "Weekly": "W",
+        "Monthly": "M",
+        "Quarterly": "Q"
+    }
+
+    trend_data = get_time_trend(
+        analysis_df,
+        selected_date,
+        selected_value,
+        frequency=frequency_mapping[frequency_option]
+    )
+
+    if not trend_data.empty:
+
+        fig = px.line(
+            trend_data,
+            x="Period",
+            y=selected_value,
+            markers=True,
+            title=f"{selected_value} Trend Over Time"
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+        st.dataframe(
+            trend_data,
+            use_container_width=True
+        )
+
+    else:
+        st.info(
+            "No valid date and numeric values were found."
+        )
+
+else:
+    st.info(
+        "Time trend analysis requires at least one "
+        "datetime column and one numeric column. "
+        "Date columns stored as text are not yet "
+        "automatically detected."
+    )
+
+
+# --------------------------------------------------
+# 18. FOOTER
 # --------------------------------------------------
 
 st.divider()
 
 st.caption(
-    "Current version: Dataset profiling, exploratory analysis, "
-    "and configurable data cleaning. Business insights and "
-    "AI-powered recommendations will be added in later milestones."
+    "Current version: Dataset profiling, data cleaning, "
+    "and advanced exploratory data analysis. "
+    "Automated KPIs, business insights, and AI recommendations "
+    "will be added in later milestones."
 )
