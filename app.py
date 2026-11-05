@@ -106,6 +106,34 @@ if len(df.columns) == 0:
 # Standardize column names for analysis.
 df.columns = df.columns.astype(str).str.strip()
 
+# --------------------------------------------------
+# AUTOMATIC DATE COLUMN DETECTION
+# --------------------------------------------------
+
+date_keywords = ["date", "time", "timestamp"]
+
+for column in df.select_dtypes(
+    include=["object", "string"]
+).columns:
+
+    if any(
+        keyword in column.lower()
+        for keyword in date_keywords
+    ):
+
+        parsed_dates = pd.to_datetime(
+            df[column],
+            errors="coerce"
+        )
+
+        valid_ratio = parsed_dates.notna().mean()
+
+        # Convert only when at least 70% of values
+        # are successfully recognized as dates.
+        if valid_ratio >= 0.70:
+            df[column] = parsed_dates
+            
+
 if any(name == "" for name in df.columns):
     st.warning("Some columns have blank names.")
 
