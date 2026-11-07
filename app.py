@@ -997,5 +997,5 @@ st.caption(
     "Current version: Dataset profiling, data cleaning, "
     "and advanced exploratory data analysis. "
     "Automated KPIs, business insights, and AI recommendations "
-    "will be added in later milestones."
+    "will be added in later milestones..."
 )
