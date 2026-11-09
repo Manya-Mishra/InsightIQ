@@ -10,3 +10,4 @@ Order_ID,Product,Category,Sales,Quantity,Region
 1009,Desk,Furniture,12000,2,East
 1010,Mouse,Electronics,1500,10,South
 1004,Chair,Furniture,8000,2,West
+1004,Chair,Furniture,8000,2,West
