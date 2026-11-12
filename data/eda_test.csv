@@ -20,3 +20,5 @@ Order_ID,Order_Date,Product,Region,Sales,Profit,Quantity,Advertising_Spend
 1018,2026-05-03,Monitor,West,22000,5000,3,3500
 1019,2026-05-11,Keyboard,East,4000,800,4,1700
 1020,2026-05-19,Laptop,North,82000,16000,2,6500
+1020,2026-05-19,Laptop,North,82000,16000,2,6500
+
