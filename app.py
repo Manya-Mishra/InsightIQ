@@ -22,6 +22,8 @@ from analytics.eda import (
     get_time_trend,
 )
 
+from analytics.kpi import get_kpi_summary
+
 
 # --------------------------------------------------
 # 1. PAGE CONFIGURATION
