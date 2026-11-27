@@ -574,7 +574,89 @@ if (
         mime="text/csv"
     )
 
+# --------------------------------------------------
+# AUTOMATED KPI GENERATION
+# --------------------------------------------------
 
+st.divider()
+
+st.header("9. Automated Business KPIs")
+
+# Use cleaned dataset if available
+if (
+    st.session_state.get("cleaned_df") is not None
+    and st.session_state.get("cleaned_file_key") == file_key
+):
+
+    kpi_df = st.session_state["cleaned_df"]
+
+    st.info(
+        "KPIs are calculated using the cleaned dataset."
+    )
+
+else:
+
+    kpi_df = df
+
+    st.info(
+        "KPIs are calculated using the original dataset."
+    )
+
+# Calculate KPIs
+kpi_results = get_kpi_summary(kpi_df)
+
+if not kpi_results.empty:
+
+    # ----------------------------------------------
+    # KPI CARDS
+    # ----------------------------------------------
+
+    kpi_columns = st.columns(
+        min(len(kpi_results), 4)
+    )
+
+    for index, row in kpi_results.iterrows():
+
+        column_index = index % 4
+
+        with kpi_columns[column_index]:
+
+            value = row["Value"]
+
+            if row["Unit"] == "currency":
+
+                display_value = f"{value:,.2f}"
+
+            elif row["Unit"] == "percentage":
+
+                display_value = f"{value:.2f}%"
+
+            else:
+
+                display_value = f"{value:,.0f}"
+
+            st.metric(
+                row["KPI"],
+                display_value
+            )
+
+    # ----------------------------------------------
+    # KPI TABLE
+    # ----------------------------------------------
+
+    st.subheader("KPI Details")
+
+    st.dataframe(
+        kpi_results,
+        use_container_width=True
+    )
+
+else:
+
+    st.info(
+        "No business KPIs could be automatically "
+        "identified from this dataset."
+    )
 
 # --------------------------------------------------
 # 17. ADVANCED EXPLORATORY DATA ANALYSIS
